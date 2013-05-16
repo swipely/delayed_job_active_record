@@ -15,6 +15,25 @@ module Delayed
         scope :by_priority, lambda { order('priority ASC, run_at ASC') }
 
         before_save :set_default_run_at
+        before_destroy :remove_others_from_singleton_queue
+
+        def remove_others_from_singleton_queue
+          if payload_object.respond_to?(:singleton_queue_name)
+            self.class.where(:queue => "singleton_#{payload_object.singleton_queue_name}").where("id != ?", id).delete_all
+          end
+        end
+
+        def self.enqueue(*args)
+          options = args.extract_options!
+          payload_object = options[:payload_object] || args[0]
+
+          if payload_object.respond_to?(:singleton_queue_name)
+            options.merge!(:queue => "singleton_#{payload_object.singleton_queue_name}")
+          end
+          args << options
+
+          super(*args)
+        end
 
         def self.set_delayed_job_table_name
           delayed_job_table_name = "#{::ActiveRecord::Base.table_name_prefix}delayed_jobs"
@@ -23,8 +42,30 @@ module Delayed
 
         self.set_delayed_job_table_name
 
+        # Prevent more than one job from a singleton queue from being run at the same time.
+        def self.exclude_running_singletons(worker_name, max_run_time)
+          sql = <<-SQL
+            queue IS NULL                     -- allow it to run if its queue is null
+            OR queue NOT LIKE 'singleton_%'   -- allow it to run if its queue is not a singleton queue
+            OR queue NOT IN (                 -- allow it to run if its queue is not in the list of currently running singleton jobs' queues
+              SELECT *
+                FROM (                        -- Use temp-table: MySQL doesn't allow sub-selects from tables locked for update
+                  SELECT DISTINCT(queue) FROM delayed_jobs           -- Prevent us from getting a job from a singleton queue
+                    WHERE queue LIKE 'singleton_%'                   -- where there's another job in that queue
+                    AND run_at <= ?                                  -- that can be run
+                    AND (locked_at IS NOT NULL AND locked_at >= ?)   -- and is currently locked
+                    AND locked_by != ?                               -- by someone other than us
+                    AND failed_at IS NULL                            -- and hasn't failed
+                ) AS temp_table
+            )
+          SQL
+
+          where(sql, db_time_now, db_time_now - max_run_time, worker_name)
+        end
+
         def self.ready_to_run(worker_name, max_run_time)
           where('(run_at <= ? AND (locked_at IS NULL OR locked_at < ?) OR locked_by = ?) AND failed_at IS NULL', db_time_now, db_time_now - max_run_time, worker_name)
+            .exclude_running_singletons(worker_name, max_run_time)
         end
 
         def self.before_fork
