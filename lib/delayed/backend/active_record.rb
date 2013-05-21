@@ -10,6 +10,8 @@ module Delayed
         if ::ActiveRecord::VERSION::MAJOR < 4
           attr_accessible :priority, :run_at, :queue, :payload_object,
                           :failed_at, :locked_at, :locked_by
+
+          validates :queue, :length => {:maximum => 255}, :allow_blank => true
         end
 
         scope :by_priority, lambda { order('priority ASC, run_at ASC') }
@@ -32,7 +34,9 @@ module Delayed
           end
           args << options
 
-          super(*args)
+          super(*args).tap do |job|
+            raise "Error enqueuing job: '#{job.errors.messages.inspect}'" unless job.valid?
+          end
         end
 
         def self.set_delayed_job_table_name
