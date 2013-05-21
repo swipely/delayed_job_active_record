@@ -12,6 +12,8 @@ module Delayed
                           :failed_at, :locked_at, :locked_by
         end
 
+        validates :queue, :length => {:maximum => 255}, :allow_blank => true
+
         scope :by_priority, lambda { order('priority ASC, run_at ASC') }
 
         before_save :set_default_run_at
@@ -32,7 +34,9 @@ module Delayed
           end
           args << options
 
-          super(*args)
+          super(*args).tap do |job|
+            raise "Error enqueuing job: '#{job.errors.messages.inspect}'" unless job.valid?
+          end
         end
 
         def self.set_delayed_job_table_name
