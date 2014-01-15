@@ -26,17 +26,16 @@ describe "Singleton Job Queue" do
     end
 
     context "the non-singleton job is enqueued first" do
-      before do
-        Delayed::Job.enqueue(TestNonSingleton.new)
-        Delayed::Job.enqueue(TestSingleton.new(queue_name))
-      end
-
       it "reserves both jobs" do
+        # There should be two jobs on the queue, both locked
+        expect {
+          Delayed::Job.enqueue(TestNonSingleton.new)
+          Delayed::Job.enqueue(TestSingleton.new(queue_name))
+        }.to change{ Delayed::Job.count }.by(2)
+
         Delayed::Job.reserve(worker1)
         Delayed::Job.reserve(worker2)
 
-        # There should be two jobs on the queue, both locked
-        expect(Delayed::Job.count).to eq(2)
         expect(Delayed::Job.where(singleton: nil, locked_by: worker1.name).count).to eq(1)
         expect(Delayed::Job.where(singleton: queue_name, locked_by: worker2.name).count).to eq(1)
       end
