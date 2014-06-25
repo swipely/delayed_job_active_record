@@ -66,7 +66,7 @@ module Delayed
           self.table_name = delayed_job_table_name
         end
 
-        self.set_delayed_job_table_name
+        set_delayed_job_table_name
 
         # Prevent more than one job from a singleton queue from being run at the same time.
         def self.exclude_running_singletons(worker_name, max_run_time)
@@ -128,9 +128,9 @@ module Delayed
           end
         end
 
-        def self.reserve(worker, max_run_time = Worker.max_run_time)
+        def self.reserve(worker, max_run_time = Worker.max_run_time) # rubocop:disable CyclomaticComplexity
           # scope to filter to records that are "ready to run"
-          ready_scope = self.ready_to_run(worker.name, max_run_time)
+          ready_scope = ready_to_run(worker.name, max_run_time)
 
           # scope to filter to the single next eligible job
           ready_scope = ready_scope.where('priority >= ?', Worker.min_priority) if Worker.min_priority
@@ -138,20 +138,20 @@ module Delayed
           ready_scope = ready_scope.where(:queue => Worker.queues) if Worker.queues.any?
           ready_scope = ready_scope.by_priority
 
-          now = self.db_time_now
+          now = db_time_now
 
           # Optimizations for faster lookups on some common databases
-          case self.connection.adapter_name
-          when "PostgreSQL"
+          case connection.adapter_name
+          when 'PostgreSQL'
             # Custom SQL required for PostgreSQL because postgres does not support UPDATE...LIMIT
             # This locks the single record 'FOR UPDATE' in the subquery (http://www.postgresql.org/docs/9.0/static/sql-select.html#SQL-FOR-UPDATE-SHARE)
             # Note: active_record would attempt to generate UPDATE...LIMIT like sql for postgres if we use a .limit() filter, but it would not use
             # 'FOR UPDATE' and we would have many locking conflicts
-            quoted_table_name = self.connection.quote_table_name(self.table_name)
+            quoted_table_name = connection.quote_table_name(table_name)
             subquery_sql      = ready_scope.limit(1).lock(true).select('id').to_sql
-            reserved          = self.find_by_sql(["UPDATE #{quoted_table_name} SET locked_at = ?, locked_by = ? WHERE id IN (#{subquery_sql}) RETURNING *", now, worker.name])
+            reserved          = find_by_sql(["UPDATE #{quoted_table_name} SET locked_at = ?, locked_by = ? WHERE id IN (#{subquery_sql}) RETURNING *", now, worker.name])
             reserved[0]
-          when "MySQL", "Mysql2"
+          when 'MySQL', 'Mysql2'
             # This works on MySQL and possibly some other DBs that support UPDATE...LIMIT. It uses separate queries to lock and return the job
             retry_on_deadlock(RETY_ATTEMPTS) do
               count = ready_scope.limit(1).update_all(:locked_at => now, :locked_by => worker.name)
@@ -164,12 +164,12 @@ module Delayed
             subsubquery_sql = ready_scope.limit(1).to_sql
             # select("id") doesn't generate a subquery, so force a subquery
             subquery_sql = "SELECT id FROM (#{subsubquery_sql}) AS x"
-            quoted_table_name = self.connection.quote_table_name(self.table_name)
+            quoted_table_name = connection.quote_table_name(table_name)
             sql = ["UPDATE #{quoted_table_name} SET locked_at = ?, locked_by = ? WHERE id IN (#{subquery_sql})", now, worker.name]
-            count = self.connection.execute(sanitize_sql(sql))
+            count = connection.execute(sanitize_sql(sql))
             return nil if count == 0
             # MSSQL JDBC doesn't support OUTPUT INSERTED.* for returning a result set, so query locked row
-            self.where(:locked_at => now, :locked_by => worker.name, :failed_at => nil).first
+            where(:locked_at => now, :locked_by => worker.name, :failed_at => nil).first
           else
             # This is our old fashion, tried and true, but slower lookup
             ready_scope.limit(worker.read_ahead).detect do |job|
