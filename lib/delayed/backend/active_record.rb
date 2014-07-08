@@ -94,7 +94,9 @@ module Delayed
 
         # When a worker is exiting, make sure we don't have any locked jobs.
         def self.clear_locks!(worker_name)
-          where(:locked_by => worker_name).update_all(:locked_by => nil, :locked_at => nil)
+          retry_on_deadlock(10) do
+            where(:locked_by => worker_name).update_all(:locked_by => nil, :locked_at => nil)
+          end
         end
 
         # Our singleton queue subquery is not atomic, and can trigger deadlocks.
