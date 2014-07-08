@@ -13,6 +13,7 @@ module Delayed
         end
 
         scope :by_priority, lambda { order('priority ASC, run_at ASC') }
+        scope :by_locked, lambda { |worker_name| where(:locked_by => worker_name) }
 
         before_save :set_default_run_at
         before_destroy :remove_others_from_singleton_queue
@@ -95,7 +96,7 @@ module Delayed
         # When a worker is exiting, make sure we don't have any locked jobs.
         def self.clear_locks!(worker_name)
           retry_on_deadlock(10) do
-            where(:locked_by => worker_name).update_all(:locked_by => nil, :locked_at => nil)
+            by_locked(worker_name).update_all(:locked_by => nil, :locked_at => nil)
           end
         end
 
@@ -108,7 +109,7 @@ module Delayed
           rescue => ex
             # This will always be an ActiveRecord::StatementInvalid, but we can
             # avoid making a new dependency on that class by just checking the message here.
-            if ex.message =~ /Deadlock found when trying to get lock/ && max_retries > 0
+            if ex.message =~ /Deadlock found when trying to get lock/ && max_retries > 1
               max_retries -= 1
               sleep(rand * 0.1)
               retry
