@@ -109,7 +109,7 @@ module Delayed
           rescue => ex
             # This will always be an ActiveRecord::StatementInvalid, but we can
             # avoid making a new dependency on that class by just checking the message here.
-            if ex.message =~ /Deadlock found when trying to get lock/ && max_retries > 1
+            if ex.message =~ /Deadlock found when trying to get lock/ && max_retries > 0
               max_retries -= 1
               sleep(rand * 0.1)
               retry

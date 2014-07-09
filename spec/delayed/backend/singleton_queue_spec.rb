@@ -195,38 +195,6 @@ describe "Singleton Job Queue" do
       end
     end
 
-    describe '.clear_lock!' do
-      context "when there is a deadlock exception raised in the block" do
-
-        let(:deadlock_error) do
-          # The exception will be an ActiveRecord::StatementInvalid, but we can
-          # avoid making a new dependency on that class by just checking the message here.
-          StandardError.new("Exception: Mysql2::Error: Deadlock found when trying to get lock; try restarting transaction: <transaction details>")
-        end
-
-        it "will retry 10 times and then raise the exception" do
-          Delayed::Job.should_receive(:by_locked).with('name').exactly(10).times.and_raise deadlock_error
-
-          expect do
-            Delayed::Job.clear_locks!('name')
-          end.to raise_error(deadlock_error)
-
-        end
-
-        it "will retry 9 times and then pass" do
-          Delayed::Job.should_receive(:by_locked).with('name').exactly(9).times.and_raise deadlock_error
-
-
-          Delayed::Job.should_receive(:by_locked).with('name').and_return(
-            double(:records, :update_all => true)
-          )
-
-
-          Delayed::Job.clear_locks!('name')
-        end
-      end
-    end
-
   end
 
 end
