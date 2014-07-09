@@ -35,7 +35,7 @@ describe Delayed::Backend::ActiveRecord::Job do
   end
 
   describe '.clear_lock!' do
-    context "when there is a deadlock exception raised in the block" do
+    context "when an unrecoverable deadlock" do
 
       let(:deadlock_error) do
         # The exception will be an ActiveRecord::StatementInvalid, but we can
@@ -51,9 +51,10 @@ describe Delayed::Backend::ActiveRecord::Job do
         end.to raise_error(deadlock_error)
 
       end
+    end
 
+    context "when a recoverable deadlock"
       it "will retry 9 times and then pass" do
-        #binding.pry
         Delayed::Job.should_receive(:by_locked).with('name').exactly(10).times.and_raise deadlock_error
 
         Delayed::Job.should_receive(:by_locked).with('name').and_return(
