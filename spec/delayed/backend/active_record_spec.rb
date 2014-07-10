@@ -36,11 +36,9 @@ describe Delayed::Backend::ActiveRecord::Job do
 
   describe '.clear_lock!' do
     let(:deadlock_error) do
-      # The exception will be an ActiveRecord::StatementInvalid, but we can
-      # avoid making a new dependency on that class by just checking the message here.
-      StandardError.new("Exception: Mysql2::Error: Deadlock found when trying to get lock; try restarting transaction: <transaction details>")
+      Delayed::Backend::ActiveRecord::RetryError.new("Exception: Mysql2::Error: Deadlock found when trying to get lock; try restarting transaction: <transaction details>")
     end
-    
+
     context "when an unrecoverable deadlock" do
 
       it "will retry 10 times and then raise the exception" do
@@ -48,7 +46,7 @@ describe Delayed::Backend::ActiveRecord::Job do
 
         expect do
           Delayed::Job.clear_locks!('name')
-        end.to raise_error(deadlock_error)
+        end.to raise_error(Delayed::Backend::ActiveRecord::RetryError)
 
       end
     end

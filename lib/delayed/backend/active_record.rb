@@ -2,6 +2,12 @@ require 'active_record/version'
 module Delayed
   module Backend
     module ActiveRecord
+
+      # Retry failed
+      class RetryError < StandardError
+
+      end
+
       # A job object that is persisted to the database.
       # Contains the work object as a YAML field.
       class Job < ::ActiveRecord::Base
@@ -114,7 +120,7 @@ module Delayed
               sleep(rand * 0.1)
               retry
             else
-              raise ex
+              raise RetryError.new( ex )
             end
           end
         end
