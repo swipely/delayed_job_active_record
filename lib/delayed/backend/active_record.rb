@@ -2,6 +2,12 @@ require 'active_record/version'
 module Delayed
   module Backend
     module ActiveRecord
+
+      # Retry failed
+      class RetryError < StandardError
+
+      end
+
       # A job object that is persisted to the database.
       # Contains the work object as a YAML field.
       class Job < ::ActiveRecord::Base
@@ -13,6 +19,7 @@ module Delayed
         end
 
         scope :by_priority, lambda { order('priority ASC, run_at ASC') }
+        scope :by_locked, lambda { |worker_name| where(:locked_by => worker_name) }
 
         before_save :set_default_run_at
         before_destroy :remove_others_from_singleton_queue
@@ -94,7 +101,9 @@ module Delayed
 
         # When a worker is exiting, make sure we don't have any locked jobs.
         def self.clear_locks!(worker_name)
-          where(:locked_by => worker_name).update_all(:locked_by => nil, :locked_at => nil)
+          retry_on_deadlock(10) do
+            by_locked(worker_name).update_all(:locked_by => nil, :locked_at => nil)
+          end
         end
 
         # Our singleton queue subquery is not atomic, and can trigger deadlocks.
@@ -111,7 +120,7 @@ module Delayed
               sleep(rand * 0.1)
               retry
             else
-              raise ex
+              raise RetryError.new( ex )
             end
           end
         end

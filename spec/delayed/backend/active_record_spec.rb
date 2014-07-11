@@ -20,16 +20,48 @@ describe Delayed::Backend::ActiveRecord::Job do
       end
     end
 
-    context "when Rails is in the environment" do
-      let(:logger) { double(:logger) }
-      before { require 'rails' }
+    if defined?(ActiveSupport::TaggedLogging) && defined?(Rails)
+      context "when Rails is in the environment" do
+        let(:logger) { double(:logger) }
+        before { require 'rails' }
 
-      it "logs the entry and exit of the job, tagged with the job's name" do
-        Rails.logger = logger
-        Rails.logger.should_receive(:tagged).and_yield
-        Rails.logger.should_receive(:info).with("Entering job")
-        Rails.logger.should_receive(:info).with("Exiting job")
-        subject.invoke_job
+        it "logs the entry and exit of the job, tagged with the job's name" do
+          Rails.logger = logger
+          Rails.logger.should_receive(:tagged).and_yield
+          Rails.logger.should_receive(:info).with("Entering job")
+          Rails.logger.should_receive(:info).with("Exiting job")
+          subject.invoke_job
+        end
+      end
+    end
+  end
+
+  describe '.clear_lock!' do
+    let(:deadlock_error) do
+      Delayed::Backend::ActiveRecord::RetryError.new("Exception: Mysql2::Error: Deadlock found when trying to get lock; try restarting transaction: <transaction details>")
+    end
+
+    context "when an unrecoverable deadlock" do
+
+      it "will retry 10 times and then raise the exception" do
+        Delayed::Job.should_receive(:by_locked).with('name').exactly(11).times.and_raise deadlock_error
+
+        expect do
+          Delayed::Job.clear_locks!('name')
+        end.to raise_error(Delayed::Backend::ActiveRecord::RetryError)
+
+      end
+    end
+
+    context "when a recoverable deadlock" do
+      it "will retry 9 times and then pass" do
+        Delayed::Job.should_receive(:by_locked).with('name').exactly(10).times.and_raise deadlock_error
+
+        Delayed::Job.should_receive(:by_locked).with('name').and_return(
+          double(:records, :update_all => true)
+        )
+
+        Delayed::Job.clear_locks!('name')
       end
     end
   end

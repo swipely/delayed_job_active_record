@@ -2,6 +2,8 @@ source 'https://rubygems.org'
 
 gem 'rake'
 
+gemspec
+
 group :test do
   platforms :jruby do
     gem 'activerecord-jdbcmysql-adapter'
@@ -27,5 +29,3 @@ group :test do
   gem 'rspec', '>= 2.11'
   gem 'simplecov', :require => false
 end
-
-gemspec
