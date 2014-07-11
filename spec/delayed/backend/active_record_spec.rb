@@ -20,16 +20,18 @@ describe Delayed::Backend::ActiveRecord::Job do
       end
     end
 
-    context "when Rails is in the environment" do
-      let(:logger) { double(:logger) }
-      before { require 'rails' }
+    if defined?(ActiveSupport::TaggedLogging) && defined?(Rails)
+      context "when Rails is in the environment" do
+        let(:logger) { double(:logger) }
+        before { require 'rails' }
 
-      it "logs the entry and exit of the job, tagged with the job's name" do
-        Rails.logger = logger
-        Rails.logger.should_receive(:tagged).and_yield
-        Rails.logger.should_receive(:info).with("Entering job")
-        Rails.logger.should_receive(:info).with("Exiting job")
-        subject.invoke_job
+        it "logs the entry and exit of the job, tagged with the job's name" do
+          Rails.logger = logger
+          Rails.logger.should_receive(:tagged).and_yield
+          Rails.logger.should_receive(:info).with("Entering job")
+          Rails.logger.should_receive(:info).with("Exiting job")
+          subject.invoke_job
+        end
       end
     end
   end
