@@ -36,34 +36,45 @@ describe Delayed::Backend::ActiveRecord::Job do
     end
   end
 
-  describe '.clear_lock!' do
+  describe "should handle deadlocks" do
     let(:deadlock_error) do
       Delayed::Backend::ActiveRecord::RetryError.new("Exception: Mysql2::Error: Deadlock found when trying to get lock; try restarting transaction: <transaction details>")
     end
 
-    context "when an unrecoverable deadlock" do
+    describe '.clear_lock!' do
 
-      it "will retry 10 times and then raise the exception" do
-        Delayed::Job.should_receive(:by_locked).with('name').exactly(11).times.and_raise deadlock_error
+      context "when an unrecoverable deadlock" do
 
-        expect do
+        it "will try 11 times and then raise the exception" do
+          Delayed::Job.should_receive(:by_locked).with('name').exactly(11).times.and_raise deadlock_error
+
+          expect do
+            Delayed::Job.clear_locks!('name')
+          end.to raise_error(Delayed::Backend::ActiveRecord::RetryError)
+
+        end
+      end
+
+      context "when a recoverable deadlock" do
+        it "will retry 10 times and then pass" do
+          Delayed::Job.should_receive(:by_locked).with('name').exactly(10).times.and_raise deadlock_error
+
+          Delayed::Job.should_receive(:by_locked).with('name').and_return(
+            double(:records, :update_all => true)
+          )
+
           Delayed::Job.clear_locks!('name')
-        end.to raise_error(Delayed::Backend::ActiveRecord::RetryError)
-
+        end
       end
     end
 
-    context "when a recoverable deadlock" do
-      it "will retry 9 times and then pass" do
-        Delayed::Job.should_receive(:by_locked).with('name').exactly(10).times.and_raise deadlock_error
+    describe '#save!' do
 
-        Delayed::Job.should_receive(:by_locked).with('name').and_return(
-          double(:records, :update_all => true)
-        )
-
-        Delayed::Job.clear_locks!('name')
+        it "will retry" do
+          subject.class.should_receive(:retry_on_deadlock).with(10)
+          subject.save!
+        end
       end
-    end
   end
 
   context "db_time_now" do
