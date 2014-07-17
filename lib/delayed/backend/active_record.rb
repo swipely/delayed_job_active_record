@@ -193,6 +193,13 @@ module Delayed
           reset
           super
         end
+
+        # Rety the save if deadlocked
+        def save!
+          self.class.retry_on_deadlock(10) do
+            super
+          end
+        end
       end
     end
   end
