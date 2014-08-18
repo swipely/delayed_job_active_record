@@ -13,6 +13,8 @@ module Delayed
       class Job < ::ActiveRecord::Base
         include Delayed::Backend::Base
 
+        RETY_ATTEMPTS = 10
+
         if ::ActiveRecord::VERSION::MAJOR < 4 || defined?(::ActiveRecord::MassAssignmentSecurity)
           attr_accessible :priority, :run_at, :queue, :payload_object,
                           :failed_at, :locked_at, :locked_by, :handler, :singleton
@@ -31,7 +33,7 @@ module Delayed
         end
 
         def destroy
-          self.class.retry_on_deadlock(10) { super }
+          self.class.retry_on_deadlock(RETY_ATTEMPTS) { super }
         end
 
         # Override #invoke_job so that there is tagged logging.
@@ -101,7 +103,7 @@ module Delayed
 
         # When a worker is exiting, make sure we don't have any locked jobs.
         def self.clear_locks!(worker_name)
-          retry_on_deadlock(10) do
+          retry_on_deadlock(RETY_ATTEMPTS) do
             by_locked(worker_name).update_all(:locked_by => nil, :locked_at => nil)
           end
         end
@@ -113,9 +115,10 @@ module Delayed
           begin
             yield
           rescue => ex
-            # This will always be an ActiveRecord::StatementInvalid, but we can
-            # avoid making a new dependency on that class by just checking the message here.
-            if ex.message =~ /Deadlock found when trying to get lock/ && max_retries > 0
+
+            # Retry on Mysql2::Error for timeout and deadlock
+            exception_msg = ex.message
+            if (exception_msg =~ /Lock wait timeout exceeded/ || exception_msg =~ /Deadlock found when trying to get lock/) && max_retries > 0
               max_retries -= 1
               sleep(rand * 0.1)
               retry
@@ -150,7 +153,7 @@ module Delayed
             reserved[0]
           when "MySQL", "Mysql2"
             # This works on MySQL and possibly some other DBs that support UPDATE...LIMIT. It uses separate queries to lock and return the job
-            retry_on_deadlock(10) do
+            retry_on_deadlock(RETY_ATTEMPTS) do
               count = ready_scope.limit(1).update_all(:locked_at => now, :locked_by => worker.name)
               return nil if count == 0
             end
@@ -196,7 +199,7 @@ module Delayed
 
         # Rety the save if deadlocked
         def save!
-          self.class.retry_on_deadlock(10) do
+          self.class.retry_on_deadlock(RETY_ATTEMPTS) do
             super
           end
         end

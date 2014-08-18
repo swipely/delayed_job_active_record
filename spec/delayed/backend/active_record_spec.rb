@@ -36,17 +36,14 @@ describe Delayed::Backend::ActiveRecord::Job do
     end
   end
 
-  describe "should handle deadlocks" do
-    let(:deadlock_error) do
-      Delayed::Backend::ActiveRecord::RetryError.new("Exception: Mysql2::Error: Deadlock found when trying to get lock; try restarting transaction: <transaction details>")
-    end
-
-    describe '.clear_lock!' do
+  describe ".clear_lock!" do
+    shared_examples_for "with retry" do
+      let(:attempts) { Delayed::Job::RETY_ATTEMPTS}
 
       context "when an unrecoverable deadlock" do
 
         it "will try 11 times and then raise the exception" do
-          Delayed::Job.should_receive(:by_locked).with('name').exactly(11).times.and_raise deadlock_error
+          Delayed::Job.should_receive(:by_locked).with('name').exactly(attempts + 1).times.and_raise deadlock_error
 
           expect do
             Delayed::Job.clear_locks!('name')
@@ -57,7 +54,7 @@ describe Delayed::Backend::ActiveRecord::Job do
 
       context "when a recoverable deadlock" do
         it "will retry 10 times and then pass" do
-          Delayed::Job.should_receive(:by_locked).with('name').exactly(10).times.and_raise deadlock_error
+          Delayed::Job.should_receive(:by_locked).with('name').exactly(attempts).times.and_raise deadlock_error
 
           Delayed::Job.should_receive(:by_locked).with('name').and_return(
             double(:records, :update_all => true)
@@ -68,13 +65,28 @@ describe Delayed::Backend::ActiveRecord::Job do
       end
     end
 
-    describe '#save!' do
-
-        it "will retry" do
-          subject.class.should_receive(:retry_on_deadlock).with(10)
-          subject.save!
-        end
+    describe "should handle Deadlock error" do
+      let(:deadlock_error) do
+        Delayed::Backend::ActiveRecord::RetryError.new("Exception: Mysql2::Error: Deadlock found when trying to get lock; try restarting transaction: <transaction details>")
       end
+
+      it_behaves_like "with retry"
+    end
+
+    describe "should handle Lock timeout" do
+      let(:deadlock_error) do
+        Delayed::Backend::ActiveRecord::RetryError.new("Exception: Mysql2::Error: Lock wait timeout exceeded;")
+      end
+
+      it_behaves_like "with retry"
+    end
+  end
+
+  describe '#save!' do
+    it "will retry" do
+      subject.class.should_receive(:retry_on_deadlock).with(10)
+      subject.save!
+    end
   end
 
   context "db_time_now" do
