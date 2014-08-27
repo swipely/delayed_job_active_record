@@ -9,7 +9,7 @@ SimpleCov.start
 
 require 'logger'
 require 'rspec'
-require 'pry'
+#require 'pry'
 
 begin
   require 'protected_attributes'
