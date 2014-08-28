@@ -4,6 +4,8 @@ gem 'rake'
 
 gemspec
 
+gem 'pry'
+
 group :test do
   platforms :jruby do
     gem 'activerecord-jdbcsqlite3-adapter'
@@ -20,5 +22,4 @@ group :test do
   gem 'coveralls', :require => false
   gem 'rspec', '>= 2.11'
   gem 'simplecov', :require => false
-  gem 'pry'
 end
