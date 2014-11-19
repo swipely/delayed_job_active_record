@@ -1,11 +1,11 @@
 {
   "built_on": "master",
-  "duration": 69.11300008,
-  "full_display_name": "gem.delayed_job_active_record #123 - master",
-  "id": "2014-11-18_05-03-09",
-  "number": 123,
+  "duration": 68.671000015,
+  "full_display_name": "gem.delayed_job_active_record #124 - master",
+  "id": "2014-11-19_05-02-30",
+  "number": 124,
   "result": "SUCCESS",
   "status_message": "?",
-  "time": "2014-11-18 05:03:09 -0500",
-  "url": "job/gem.delayed_job_active_record/123/"
+  "time": "2014-11-19 05:02:30 -0500",
+  "url": "job/gem.delayed_job_active_record/124/"
 }
