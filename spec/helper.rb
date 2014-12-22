@@ -2,8 +2,8 @@ require "simplecov"
 require "coveralls"
 
 SimpleCov.formatter = SimpleCov::Formatter::MultiFormatter[
-    SimpleCov::Formatter::HTMLFormatter,
-    Coveralls::SimpleCov::Formatter
+  SimpleCov::Formatter::HTMLFormatter,
+  Coveralls::SimpleCov::Formatter
 ]
 
 SimpleCov.start do
@@ -45,8 +45,8 @@ ActiveRecord::Base.establish_connection config[db_adapter]
 ActiveRecord::Base.logger = Delayed::Worker.logger
 ActiveRecord::Migration.verbose = false
 
-require 'generators/delayed_job/templates/migration'
-require 'generators/delayed_job/templates/singleton_queues_migration'
+require "generators/delayed_job/templates/migration"
+require "generators/delayed_job/templates/singleton_queues_migration"
 ActiveRecord::Schema.define do
   CreateDelayedJobs.up
   AddSingletonToDelayedJobs.up
