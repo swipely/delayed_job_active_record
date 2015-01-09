@@ -1,0 +1,11 @@
+{
+  "built_on": "master",
+  "duration": 138.615000103,
+  "full_display_name": "gem.delayed_job_active_record #3 - jenkins-testing",
+  "id": "2015-01-09_10-14-42",
+  "number": 3,
+  "result": "SUCCESS",
+  "status_message": "?",
+  "time": "2015-01-09 10:14:42 -0500",
+  "url": "job/gem.delayed_job_active_record/3/"
+}
