@@ -1,0 +1,11 @@
+{
+  "built_on": "master",
+  "duration": 172.062000069,
+  "full_display_name": "gem.delayed_job_active_record #82 - version.sw.5",
+  "id": "2015-03-25_20-09-18",
+  "number": 82,
+  "result": "FAILURE",
+  "status_message": "?",
+  "time": "2015-03-25 20:09:18 -0400",
+  "url": "job/gem.delayed_job_active_record/82/"
+}
