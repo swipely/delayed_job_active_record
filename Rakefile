@@ -34,4 +34,5 @@ end
 require "rubocop/rake_task"
 RuboCop::RakeTask.new
 
-task default: ([:coverage] + ADAPTERS + [:adapter] + [:rubocop])
+task system_default: ([:default] + [:rubocop])
+task default: ([:coverage] + ADAPTERS + [:adapter])
