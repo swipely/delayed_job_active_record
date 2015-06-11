@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 require "bundler/gem_helper"
 Bundler::GemHelper.install_tasks
 
@@ -32,4 +31,8 @@ Rake::Task[:spec].enhance do
   Coveralls::SimpleCov::Formatter.new.format(SimpleCov.result)
 end
 
+require "rubocop/rake_task"
+RuboCop::RakeTask.new
+
+task system_default: ([:default] + [:rubocop])
 task default: ([:coverage] + ADAPTERS + [:adapter])
