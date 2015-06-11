@@ -1,0 +1,11 @@
+{
+  "built_on": "master",
+  "duration": 182.035999949,
+  "full_display_name": "gem.delayed_job_active_record #53 - pull_upstream_changes_from_v4_0_3_tr_gTnyqJIq",
+  "id": "2015-06-11_11-37-15",
+  "number": 53,
+  "result": "FAILURE",
+  "status_message": "?",
+  "time": "2015-06-11 11:37:15 -0400",
+  "url": "job/gem.delayed_job_active_record/53/"
+}
