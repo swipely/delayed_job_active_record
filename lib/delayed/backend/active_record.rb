@@ -30,6 +30,10 @@ module Delayed
           if payload_object.respond_to?(:singleton_queue_name)
             self.class.where(:singleton => payload_object.singleton_queue_name).where("id != ?", id).delete_all
           end
+        rescue Delayed::DeserializationError => ex
+          if defined? Rails
+            Rails.logger.error("Unable to clear singleton queue for job: #{inspect} due to error: #{ex.message}")
+          end
         end
 
         def destroy

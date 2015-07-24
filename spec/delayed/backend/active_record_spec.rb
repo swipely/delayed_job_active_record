@@ -89,6 +89,16 @@ describe Delayed::Backend::ActiveRecord::Job do
     end
   end
 
+  describe "#destroy" do
+    it "succeeds even if the payload_object is corrupt" do
+      allow(YAML).to receive(:load_dj).and_raise(ArgumentError)
+      subject.handler = "handler"
+      subject.save!
+
+      expect { subject.destroy }.to_not raise_error
+    end
+  end
+
   describe "reserve_with_scope" do
     let(:worker) { double(name: "worker01", read_ahead: 1) }
     let(:scope)  { double(limit: limit, where: double(update_all: nil)) }
